@@ -184,6 +184,16 @@ TOKEN=$(databricks auth token --profile dbx_shared_demo --output json | python3 
 curl -H "Authorization: Bearer $TOKEN" "https://<app-url>/health"
 ```
 
+### Configure UI Assistant
+  1. Open the UI assistant
+  2. Click settings
+  3. Under "MCP Servers", click "Add Server"
+  4. In the "Custom MCP Server" dropdown, select the databricks app you just deployed.
+  5. Click "Save"
+  6. Once added, click on the blue title "0 tools enabled" under the MCP app.
+  7. Select which tools you would like the assistant to reference.
+
+
 ---
 
 
