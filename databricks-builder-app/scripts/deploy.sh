@@ -235,20 +235,69 @@ cp -r "$REPO_ROOT/databricks-tools-core/databricks_tools_core/"* "$STAGING_DIR/p
 mkdir -p "$STAGING_DIR/packages/databricks_mcp_server"
 cp -r "$REPO_ROOT/databricks-mcp-server/databricks_mcp_server/"* "$STAGING_DIR/packages/databricks_mcp_server/"
 
-# Copy skills (preserve directory structure)
-echo "  Copying skills..."
+# Install all skills (databricks + MLflow + APX) via install_skills.sh
+echo "  Installing all skills via install_skills.sh..."
+INSTALL_SKILLS_SCRIPT="$REPO_ROOT/databricks-skills/install_skills.sh"
+if [ ! -f "$INSTALL_SKILLS_SCRIPT" ]; then
+  echo -e "${RED}Error: install_skills.sh not found at ${INSTALL_SKILLS_SCRIPT}${NC}"
+  exit 1
+fi
+
+SKILLS_TEMP_DIR=$(mktemp -d)
+trap "rm -rf '$SKILLS_TEMP_DIR'" EXIT
+
+# Create a marker file so install_skills.sh skips the "not a project root" prompt
+touch "$SKILLS_TEMP_DIR/databricks.yml"
+
+# Run install_skills.sh to download all skills (databricks, MLflow, APX)
+(cd "$SKILLS_TEMP_DIR" && bash "$INSTALL_SKILLS_SCRIPT")
+
+# Copy installed skills into the staging directory
 mkdir -p "$STAGING_DIR/skills"
-SKILLS_DIR="$REPO_ROOT/databricks-skills"
-if [ -d "$SKILLS_DIR" ]; then
-  for skill_dir in "$SKILLS_DIR"/*/; do
+INSTALLED_SKILLS_DIR="$SKILLS_TEMP_DIR/.claude/skills"
+if [ -d "$INSTALLED_SKILLS_DIR" ]; then
+  for skill_dir in "$INSTALLED_SKILLS_DIR"/*/; do
+    [ -d "$skill_dir" ] || continue
     skill_name=$(basename "$skill_dir")
-    # Skip template and non-skill directories
-    if [ "$skill_name" != "TEMPLATE" ] && [ -f "$skill_dir/SKILL.md" ]; then
-      # Create skill directory and copy contents (cp -r dir/ copies contents, not dir itself)
+    if [ -f "$skill_dir/SKILL.md" ]; then
       mkdir -p "$STAGING_DIR/skills/$skill_name"
       cp -r "$skill_dir"* "$STAGING_DIR/skills/$skill_name/"
     fi
   done
+fi
+
+# Dynamically set ENABLED_SKILLS in app.yaml based on installed skills
+SKILL_NAMES=""
+for skill_dir in "$STAGING_DIR/skills"/*/; do
+  [ -d "$skill_dir" ] || continue
+  if [ -f "$skill_dir/SKILL.md" ]; then
+    name=$(basename "$skill_dir")
+    if [ -n "$SKILL_NAMES" ]; then
+      SKILL_NAMES="${SKILL_NAMES},${name}"
+    else
+      SKILL_NAMES="${name}"
+    fi
+  fi
+done
+if [ -n "$SKILL_NAMES" ]; then
+  echo "  Patching ENABLED_SKILLS with $(echo "$SKILL_NAMES" | tr ',' '\n' | wc -l | tr -d ' ') skills..."
+  python3 -c "
+import re, sys
+path = sys.argv[1]
+skills = sys.argv[2]
+with open(path) as f:
+    text = f.read()
+text = re.sub(
+    r'(- name: ENABLED_SKILLS\n\s+value: )\"[^\"]*\"',
+    r'\1\"' + skills + '\"',
+    text,
+)
+with open(path, 'w') as f:
+    f.write(text)
+" "$STAGING_DIR/app.yaml" "$SKILL_NAMES"
+  echo -e "  ${GREEN}✓${NC} ENABLED_SKILLS updated"
+else
+  echo -e "  ${YELLOW}Warning: No skills found to set in ENABLED_SKILLS${NC}"
 fi
 
 # Remove __pycache__ directories
