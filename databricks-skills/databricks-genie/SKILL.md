@@ -1,6 +1,6 @@
 ---
 name: databricks-genie
-description: "Create and query Databricks Genie Spaces for natural language SQL exploration. Use when building Genie Spaces or asking questions via the Genie Conversation API."
+description: "Create, configure, and query Databricks Genie Spaces for natural language SQL exploration. Use when building Genie Spaces, configuring advanced instructions/joins/filters/measures via the Databricks Python SDK, or asking questions via the Genie Conversation API."
 ---
 
 # Databricks Genie
@@ -15,112 +15,165 @@ Genie Spaces allow users to ask natural language questions about structured data
 
 Use this skill when:
 - Creating a new Genie Space for data exploration
+- **Configuring a Genie Space** with instructions, joins, filters, dimensions, measures, and example queries via the Databricks Python SDK
 - Adding sample questions to guide users
 - Connecting Unity Catalog tables to a conversational interface
 - Asking questions to a Genie Space programmatically (Conversation API)
 
-## MCP Tools
+## Approach Options
 
-### Space Management
+### Option 1: Databricks Python SDK (Recommended for Production)
+
+Use the Databricks SDK for type-safe, production-ready implementations:
+
+```python
+from databricks.sdk import WorkspaceClient
+w = WorkspaceClient()
+
+# Full type safety, CI/CD integration, version control
+space = w.genie.create_space(...)
+w.genie.update_space(serialized_space=...)
+result = w.genie.start_conversation_and_wait(...)
+```
+
+**Benefits**: Type safety, IDE autocomplete, error handling, production-ready, CI/CD integration
+
+**See**: [space-configuration.md](space-configuration.md) for complete SDK implementation guide
+
+### Option 2: Databricks CLI
+
+Use the CLI for quick operations and shell scripts:
+
+```bash
+databricks genie create --title "Sales Analytics" --warehouse-id abc123
+databricks genie ask --space-id abc123 "What were total sales?"
+databricks tables get my_catalog.sales.customers
+```
+
+**Benefits**: No code required, shell integration, quick commands
+
+### Option 3: MCP Tools (Interactive Development)
+
+For interactive development with Claude Code, MCP tools are available:
 
 | Tool | Purpose |
 |------|---------|
 | `create_or_update_genie` | Create or update a Genie Space |
-| `get_genie` | Get space details (by ID) or list all spaces (no ID) |
-| `delete_genie` | Delete a Genie Space |
+| `ask_genie` | Ask questions to a space |
+| `get_table_details` | Inspect table schemas |
+| `list_genie`, `get_genie`, `delete_genie` | Space management |
 
-### Conversation API
+**Benefits**: No setup, works directly in Claude Code, fast prototyping
 
-| Tool | Purpose |
-|------|---------|
-| `ask_genie` | Ask a question or follow-up (`conversation_id` optional) |
-
-### Supporting Tools
-
-| Tool | Purpose |
-|------|---------|
-| `get_table_details` | Inspect table schemas before creating a space |
-| `execute_sql` | Test SQL queries directly |
+**See**: [mcp-tools-reference.md](mcp-tools-reference.md) for complete tool documentation
 
 ## Quick Start
 
-### 1. Inspect Your Tables
-
-Before creating a Genie Space, understand your data:
+### Using Databricks Python SDK (Recommended)
 
 ```python
-get_table_details(
-    catalog="my_catalog",
-    schema="sales",
-    table_stat_level="SIMPLE"
+from databricks.sdk import WorkspaceClient
+from datetime import timedelta
+
+w = WorkspaceClient()
+
+# 1. Inspect tables
+table = w.tables.get(full_name="my_catalog.sales.customers")
+print(f"Table: {table.name}, Columns: {len(table.columns)}")
+
+# 2. Create Genie Space
+space = w.genie.create_space(
+    warehouse_id="your-warehouse-id",
+    title="Sales Analytics",
+    description="Explore sales data with natural language",
+    serialized_space='{"version": 2, "data_sources": {"tables": [{"identifier": "my_catalog.sales.customers"}]}, "config": {}, "instructions": {}}'
 )
+
+# 3. Ask questions
+result = w.genie.start_conversation_and_wait(
+    space_id=space.space_id,
+    content="What were total sales last month?",
+    timeout=timedelta(seconds=120)
+)
+print(f"SQL: {result.attachments[0].query.query}")
 ```
 
-### 2. Create the Genie Space
+### Using MCP Tools (Alternative)
+
+For interactive development with Claude Code, you can use MCP tools:
 
 ```python
+# 1. Inspect tables
+get_table_details(catalog="my_catalog", schema="sales", table_stat_level="SIMPLE")
+
+# 2. Create space
 create_or_update_genie(
     display_name="Sales Analytics",
-    table_identifiers=[
-        "my_catalog.sales.customers",
-        "my_catalog.sales.orders"
-    ],
-    description="Explore sales data with natural language",
-    sample_questions=[
-        "What were total sales last month?",
-        "Who are our top 10 customers?"
-    ]
+    table_identifiers=["my_catalog.sales.customers"],
+    description="Explore sales data with natural language"
 )
-```
 
-### 3. Ask Questions (Conversation API)
-
-```python
-ask_genie(
-    space_id="your_space_id",
-    question="What were total sales last month?"
-)
-# Returns: SQL, columns, data, row_count
+# 3. Ask questions
+ask_genie(space_id="your_space_id", question="What were total sales last month?")
 ```
 
 ## Workflow
 
+### SDK/CLI Workflow (Recommended)
+
+```
+1. Inspect tables    → w.tables.get() or CLI: databricks tables get
+2. Create space      → w.genie.create_space() or CLI: databricks genie create
+3. Configure space   → w.genie.update_space(serialized_space=...) - see space-configuration.md
+4. Query space       → w.genie.start_conversation_and_wait() or CLI: databricks genie ask
+5. Iterate           → w.genie.update_space() - refine instructions/joins/measures
+```
+
+**Benefits**: Type safety, CI/CD integration, version control, production-ready
+
+### MCP Tools Workflow (Alternative for Interactive Development)
+
 ```
 1. Inspect tables    → get_table_details
 2. Create space      → create_or_update_genie
-3. Query space       → ask_genie (or test in Databricks UI)
-4. Curate (optional) → Use Databricks UI to add instructions
+3. Configure space   → Use SDK for advanced config (see space-configuration.md)
+4. Query space       → ask_genie
+5. Iterate           → Use SDK to refine configuration
 ```
 
-## Reference Files
-
-- [spaces.md](spaces.md) - Creating and managing Genie Spaces
-- [conversation.md](conversation.md) - Asking questions via the Conversation API
+**Benefits**: No code setup, works directly in Claude Code, fast prototyping
 
 ## Prerequisites
 
-Before creating a Genie Space:
+### For SDK/CLI Usage (Recommended)
+
+```bash
+# Install Databricks SDK
+pip install databricks-sdk
+
+# Configure authentication (~/.databrickscfg or environment variables)
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="dapi..."
+```
+
+### Data Requirements
 
 1. **Tables in Unity Catalog** - Bronze/silver/gold tables with the data
 2. **SQL Warehouse** - A warehouse to execute queries (auto-detected if not specified)
 
-### Creating Tables
+**Creating tables**: Use `synthetic-data-generation` → `spark-declarative-pipelines` skills
 
-Use these skills in sequence:
-1. `databricks-synthetic-data-gen` - Generate raw parquet files
-2. `databricks-spark-declarative-pipelines` - Create bronze/silver/gold tables
+## Reference Files
+
+- **[space-configuration.md](space-configuration.md)** - Complete SDK implementation guide (joins, filters, dimensions, measures, examples)
+- **[spaces.md](spaces.md)** - Creating and managing Genie Spaces
+- **[conversation.md](conversation.md)** - Asking questions via the Conversation API
+- **[mcp-tools-reference.md](mcp-tools-reference.md)** - MCP tools reference (alternative approach)
 
 ## Common Issues
 
 | Issue | Solution |
 |-------|----------|
 | **No warehouse available** | Create a SQL warehouse or provide `warehouse_id` explicitly |
-| **Poor query generation** | Add instructions and sample questions that reference actual column names |
+| **Poor query generation** | Configure instructions, joins, filters, dimensions, measures, and example queries via the [Databricks Python SDK](space-configuration.md) |
 | **Slow queries** | Ensure warehouse is running; use OPTIMIZE on tables |
-
-## Related Skills
-
-- **[databricks-agent-bricks](../databricks-agent-bricks/SKILL.md)** - Use Genie Spaces as agents inside Supervisor Agents
-- **[databricks-synthetic-data-gen](../databricks-synthetic-data-gen/SKILL.md)** - Generate raw parquet data to populate tables for Genie
-- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - Build bronze/silver/gold tables consumed by Genie Spaces
-- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - Manage the catalogs, schemas, and tables Genie queries

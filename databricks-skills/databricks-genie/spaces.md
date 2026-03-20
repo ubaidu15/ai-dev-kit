@@ -163,10 +163,10 @@ The tool finds the existing space by name and updates it.
 
 ## Example End-to-End Workflow
 
-1. **Generate synthetic data** using `databricks-synthetic-data-gen` skill:
+1. **Generate synthetic data** using `synthetic-data-generation` skill:
    - Creates parquet files in `/Volumes/catalog/schema/raw_data/`
 
-2. **Create tables** using `databricks-spark-declarative-pipelines` skill:
+2. **Create tables** using `spark-declarative-pipelines` skill:
    - Creates `catalog.schema.bronze_*` → `catalog.schema.silver_*` → `catalog.schema.gold_*`
 
 3. **Inspect the tables**:
@@ -200,4 +200,4 @@ The tool finds the existing space by name and updates it.
 - Use descriptive column names
 - Add table and column comments
 - Include sample questions that demonstrate the vocabulary
-- Add instructions via the Databricks Genie UI
+- Configure instructions, joins, filters, dimensions, measures, and example queries via the [Databricks Python SDK](space-configuration.md)
