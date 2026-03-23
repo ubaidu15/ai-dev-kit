@@ -90,8 +90,6 @@ Generate complete, valid HTML5 (<!DOCTYPE html>, <html>, <head>, <style>, <body>
 
 def _get_html_system_prompt(doc_size: DocSize) -> str:
     """Get system prompt for HTML generation based on document size."""
-    config = _SIZE_CONFIG[doc_size]
-
     base_prompt = """You are a technical documentation specialist creating HTML documents for PDF conversion.
 
 DOCUMENT TYPE ADAPTATION:
