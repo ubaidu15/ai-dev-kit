@@ -31,7 +31,7 @@ Use this when the pipeline is **part of an existing Databricks Asset Bundle proj
 - There's already a `databricks.yml` file in the project
 - User is adding a pipeline to an existing app/demo
 
-→ See [3-project-initialization.md](3-project-initialization.md) for adding pipelines to existing bundles
+→ See [1-project-initialization.md](1-project-initialization.md) for adding pipelines to existing bundles
 
 ### Option C: Rapid Iteration with MCP Tools (no bundle management)
 
@@ -41,7 +41,7 @@ Use this when you need to **quickly create, test, and iterate** on a pipeline wi
 - Prototyping or experimenting with pipeline logic
 - User explicitly asks to use MCP tools
 
-→ See [4-mcp-approach.md](4-mcp-approach.md) for MCP-based workflow
+→ See [2-mcp-approach.md](2-mcp-approach.md) for MCP-based workflow
 
 ---
 
@@ -108,7 +108,7 @@ databricks bundle run my_pipeline_etl
 databricks bundle deploy --target prod
 ```
 
-See **[3-project-initialization.md](3-project-initialization.md)** for complete details on bundle initialization, migration, and troubleshooting.
+See **[1-project-initialization.md](1-project-initialization.md)** for complete details on bundle initialization, migration, and troubleshooting.
 
 
 ## Quick Reference
@@ -152,9 +152,10 @@ After choosing your workflow (see [Choose Your Workflow](#choose-your-workflow))
 ### General Documentation
 | Task | Guide |
 |------|-------|
-| **Setting up standalone pipeline project** | [3-project-initialization.md](3-project-initialization.md) |
-| **Rapid iteration with MCP tools** | [4-mcp-approach.md](4-mcp-approach.md) |
-| **Migrating from DLT** | [2-dlt-migration.md](2-dlt-migration.md) |
+| **Setting up standalone pipeline project** | [1-project-initialization.md](1-project-initialization.md) |
+| **Rapid iteration with MCP tools** | [2-mcp-approach.md](2-mcp-approach.md) |
+| **Advanced configuration** | [3-advanced-configuration.md](3-advanced-configuration.md) |
+| **Migrating from DLT** | [4-dlt-migration.md](4-dlt-migration.md) |
 
 ---
 
@@ -203,7 +204,7 @@ After choosing your workflow (see [Choose Your Workflow](#choose-your-workflow))
 
 Both work with the `transformations/**` glob pattern. Choose based on preference.
 
-See **[3-project-initialization.md](3-project-initialization.md)** for complete details on bundle initialization, migration, and troubleshooting.
+See **[1-project-initialization.md](1-project-initialization.md)** for complete details on bundle initialization, migration, and troubleshooting.
 
 ---
 ## General SDP development guidance
@@ -280,7 +281,7 @@ Example: `/Volumes/my_catalog/pipeline_metadata/orders_pipeline_metadata/schemas
 - **Prompt for clarification** only when language intent is truly ambiguous (no explicit mention, mixed signals)
 - **Default to SQL** only when ambiguous AND no Python indicators present
 
-See **[3-project-initialization.md](3-project-initialization.md)** for detailed language detection logic.
+See **[1-project-initialization.md](1-project-initialization.md)** for detailed language detection logic.
 
 
 ## Best Practices (2026)
@@ -293,7 +294,7 @@ See **[3-project-initialization.md](3-project-initialization.md)** for detailed 
   - **Flat structure** (template default): `bronze_*.sql`, `silver_*.sql`, `gold_*.sql` in `transformations/`
   - **Subdirectories**: `transformations/bronze/`, `transformations/silver/`, `transformations/gold/`
   - Both work with the `transformations/**` glob pattern - choose based on team preference
-- See **[3-project-initialization.md](3-project-initialization.md)** for project setup details
+- See **[1-project-initialization.md](1-project-initialization.md)** for project setup details
 
 ### Minimal pipeline config pointers
 - Define parameters in your pipeline’s configuration and access them in code with spark.conf.get("key").
@@ -534,7 +535,7 @@ def enriched_orders():
 
 ## Advanced Pipeline Configuration
 
-For advanced configuration options (development mode, continuous pipelines, custom clusters, notifications, Python dependencies, etc.), see **[5-advanced-configuration.md](5-advanced-configuration.md)**.
+For advanced configuration options (development mode, continuous pipelines, custom clusters, notifications, Python dependencies, etc.), see **[3-advanced-configuration.md](3-advanced-configuration.md)**.
 
 ---
 
