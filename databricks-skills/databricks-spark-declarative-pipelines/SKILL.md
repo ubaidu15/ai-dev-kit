@@ -56,6 +56,19 @@ Before writing pipeline code, make sure you have:
 - [ ] Consider [Multi-Schema Patterns](#multi-schema-patterns) and [Modern Defaults](#modern-defaults)
 ```
 
+**After selecting language, read the syntax basics:**
+- **SQL**: Read [sql/1-syntax-basics.md](sql/1-syntax-basics.md)
+- **Python**: Read [python/1-syntax-basics.md](python/1-syntax-basics.md)
+
+**Then read additional guides based on what the pipeline needs:**
+| If the pipeline needs... | Read |
+|--------------------------|------|
+| File ingestion (Auto Loader, JSON, CSV, Parquet) | `sql/2-ingestion.md` or `python/2-ingestion.md` |
+| Kafka, Event Hub, or Kinesis streaming | `sql/2-ingestion.md` or `python/2-ingestion.md` |
+| Deduplication, windowed aggregations, joins | `sql/3-streaming-patterns.md` or `python/3-streaming-patterns.md` |
+| CDC, SCD Type 1/2, or history tracking | `sql/4-cdc-patterns.md` or `python/4-cdc-patterns.md` |
+| Performance tuning, Liquid Clustering | `sql/5-performance.md` or `python/5-performance.md` |
+
 ---
 
 ## Standalone Pipeline with Asset Bundle
