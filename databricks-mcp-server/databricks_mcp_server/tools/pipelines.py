@@ -222,16 +222,19 @@ def stop_pipeline(pipeline_id: str) -> Dict[str, str]:
 @mcp.tool
 def get_pipeline_events(
     pipeline_id: str,
-    max_results: int = 100,
+    max_results: int = 5,
 ) -> List[Dict[str, Any]]:
     """
     Get pipeline events, issues, and error messages.
 
-    Use this to debug pipeline failures.
+    Use this to debug pipeline failures. Each event can contain detailed
+    stack traces, so a small default is used to avoid overwhelming output.
 
     Args:
         pipeline_id: Pipeline ID
-        max_results: Maximum number of events to return (default: 100)
+        max_results: Maximum number of events to return (default: 5).
+            Events include state transitions (INITIALIZING, RUNNING, FAILED)
+            and error details. Increase for longer history.
 
     Returns:
         List of event dictionaries with error details.

@@ -407,15 +407,16 @@ def stop_pipeline(pipeline_id: str) -> None:
     w.pipelines.stop(pipeline_id=pipeline_id)
 
 
-def get_pipeline_events(pipeline_id: str, max_results: int = 100) -> List[PipelineEvent]:
+def get_pipeline_events(pipeline_id: str, max_results: int = 5) -> List[PipelineEvent]:
     """
     Get pipeline events, issues, and error messages.
 
-    Use this to debug pipeline failures.
+    Use this to debug pipeline failures. Each event can contain detailed
+    stack traces, so a small default is used to avoid overwhelming output.
 
     Args:
         pipeline_id: Pipeline ID
-        max_results: Maximum number of events to return
+        max_results: Maximum number of events to return (default: 5)
 
     Returns:
         List of PipelineEvent objects with error details
