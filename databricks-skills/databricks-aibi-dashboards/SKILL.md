@@ -119,6 +119,10 @@ If you need conditional logic or multi-field formulas, compute a derived column 
 - Date math: `date_sub(current_date(), N)` for days, `add_months(current_date(), -N)` for months
 - Date truncation: `DATE_TRUNC('DAY'|'WEEK'|'MONTH'|'QUARTER'|'YEAR', column)`
 - **AVOID** `INTERVAL` syntax - use functions instead
+- **Add ORDER BY** when visualization depends on data order:
+  - Time series: `ORDER BY date` for chronological display
+  - Rankings/Top-N: `ORDER BY metric DESC LIMIT 10` for "Top 10" charts
+  - Categorical charts: `ORDER BY metric DESC` to show largest values first
 
 ### 4) LAYOUT (6-Column Grid, NO GAPS)
 

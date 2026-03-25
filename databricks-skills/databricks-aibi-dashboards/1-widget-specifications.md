@@ -5,6 +5,7 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 ## Widget Naming Convention (CRITICAL)
 
 - `widget.name`: alphanumeric + hyphens + underscores ONLY (no spaces, parentheses, colons)
+  - **Maximum 60 characters** - longer names cause validation errors
 - `frame.title`: human-readable name (any characters allowed)
 - `widget.queries[0].name`: always use `"main_query"`
 
@@ -20,6 +21,7 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 | bar | 3 |
 | line | 3 |
 | pie | 3 |
+| combo | 1 |
 | text | N/A (no spec block) |
 
 ---
@@ -72,6 +74,50 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 - `version`: **2** (NOT 3!)
 - `widgetType`: "counter"
 - **Percent values must be 0-1** in the data (not 0-100)
+
+### Number Formatting
+
+Use the `format` property in `encodings.value` to control display:
+
+```json
+// Currency - displays "$1.2M" instead of "1234567"
+"encodings": {
+  "value": {
+    "fieldName": "revenue",
+    "displayName": "Total Revenue",
+    "format": {
+      "type": "number-currency",
+      "currencyCode": "USD",
+      "abbreviation": "compact",
+      "decimalPlaces": {"type": "max", "places": 2}
+    }
+  }
+}
+
+// Percent - displays "45.2%" (data must be 0-1)
+"encodings": {
+  "value": {
+    "fieldName": "conversion_rate",
+    "displayName": "Conversion Rate",
+    "format": {
+      "type": "number-percent",
+      "decimalPlaces": {"type": "max", "places": 1}
+    }
+  }
+}
+
+// Plain number with formatting
+"encodings": {
+  "value": {
+    "fieldName": "order_count",
+    "displayName": "Orders",
+    "format": {
+      "type": "number",
+      "decimalPlaces": {"type": "max", "places": 0}
+    }
+  }
+}
+```
 
 **Two patterns for counters:**
 
@@ -204,9 +250,64 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 "color": {"fieldName": "region", "scale": {"type": "categorical"}, "displayName": "Region"}
 ```
 
-**Bar Chart Modes:**
-- **Stacked** (default): No `mark` field - bars stack on top of each other
-- **Grouped**: Add `"mark": {"layout": "group"}` - bars side-by-side for comparison
+### Color Encoding
+
+**Two types of color scales:**
+
+1. **Categorical** (discrete colors for groups):
+```json
+"color": {"fieldName": "priority", "scale": {"type": "categorical"}, "displayName": "Priority"}
+```
+
+2. **Quantitative** (gradient based on numeric value - for heatmap-style effects):
+```json
+"color": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}, "displayName": "Revenue"}
+```
+
+> **CRITICAL**: Color scale for bar/line/area/scatter/pie ONLY supports these properties:
+> - `type`: required ("categorical", "quantitative", or "temporal")
+> - `sort`: optional
+>
+> **DO NOT** add `scheme`, `colorRamp`, or `mappings` - these only work for choropleth-map widgets and will cause errors on other chart types.
+
+### Bar Chart Modes
+
+Choose based on your visualization goal:
+
+| Mode | When to Use | Configuration |
+|------|-------------|---------------|
+| **Stacked** (default) | Show total + composition breakdown | No `mark` field |
+| **Grouped** | Compare values across categories side-by-side | Add `"mark": {"layout": "group"}` |
+
+**Stacked mode** (default - bars stack on top of each other):
+```json
+"spec": {
+  "version": 3,
+  "widgetType": "bar",
+  "encodings": {
+    "x": {"fieldName": "daily(date)", "scale": {"type": "temporal"}},
+    "y": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}},
+    "color": {"fieldName": "region", "scale": {"type": "categorical"}}
+  }
+  // No "mark" field = stacked
+}
+```
+
+**Grouped mode** (bars side-by-side for comparison):
+```json
+"spec": {
+  "version": 3,
+  "widgetType": "bar",
+  "encodings": {
+    "x": {"fieldName": "category", "scale": {"type": "categorical"}},
+    "y": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}},
+    "color": {"fieldName": "region", "scale": {"type": "categorical"}}
+  },
+  "mark": {"layout": "group"}
+}
+```
+
+> **Tip**: For grouped bars with a time series X-axis, use weekly or monthly aggregation (`DATE_TRUNC("WEEK", date)`) for readability instead of daily.
 
 ## Pie Chart
 
@@ -215,3 +316,61 @@ Detailed JSON patterns for each AI/BI dashboard widget type.
 - `angle`: quantitative aggregate
 - `color`: categorical dimension
 - Limit to 3-8 categories for readability
+
+---
+
+## Combo Chart (Bar + Line)
+
+Combo charts display two visualization types on the same widget - bars for one metric and a line for another. Useful for showing related metrics with different representations (e.g., revenue as bars + growth rate as a line).
+
+- `version`: **1**
+- `widgetType`: "combo"
+- `y.primary`: bar chart fields
+- `y.secondary`: line chart fields
+- **Important**: Both primary and secondary should have similar scales since they share the Y-axis
+
+```json
+{
+  "widget": {
+    "name": "revenue-and-growth",
+    "queries": [{
+      "name": "main_query",
+      "query": {
+        "datasetName": "metrics_ds",
+        "fields": [
+          {"name": "daily(date)", "expression": "DATE_TRUNC(\"DAY\", `date`)"},
+          {"name": "sum(revenue)", "expression": "SUM(`revenue`)"},
+          {"name": "avg(growth_rate)", "expression": "AVG(`growth_rate`)"}
+        ],
+        "disaggregated": false
+      }
+    }],
+    "spec": {
+      "version": 1,
+      "widgetType": "combo",
+      "encodings": {
+        "x": {
+          "fieldName": "daily(date)",
+          "scale": {"type": "temporal"}
+        },
+        "y": {
+          "scale": {"type": "quantitative"},
+          "primary": {
+            "fields": [
+              {"fieldName": "sum(revenue)", "displayName": "Revenue ($)"}
+            ]
+          },
+          "secondary": {
+            "fields": [
+              {"fieldName": "avg(growth_rate)", "displayName": "Growth Rate"}
+            ]
+          }
+        },
+        "label": {"show": false}
+      },
+      "frame": {"title": "Revenue & Growth Rate", "showTitle": true}
+    }
+  },
+  "position": {"x": 0, "y": 0, "width": 6, "height": 5}
+}
+```

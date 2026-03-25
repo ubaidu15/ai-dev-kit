@@ -7,9 +7,11 @@
 > - **ALWAYS include `frame` with `showTitle: true`** for filter widgets
 
 **Filter widget types:**
-- `filter-date-range-picker`: for DATE/TIMESTAMP fields
+- `filter-date-range-picker`: for DATE/TIMESTAMP fields (date range selection)
 - `filter-single-select`: categorical with single selection
-- `filter-multi-select`: categorical with multiple selections
+- `filter-multi-select`: categorical with multiple selections (preferred for drill-down)
+
+> **Performance note**: Global filters automatically apply `WHERE` clauses to dataset queries at runtime. You don't need to pre-filter data in your SQL - the dashboard engine handles this efficiently.
 
 ---
 
@@ -153,6 +155,89 @@ Place directly on a canvas page (affects only that page):
   ]
 }
 ```
+
+---
+
+## Date Range Picker Example
+
+For time-based filtering across the dashboard:
+
+```json
+{
+  "widget": {
+    "name": "filter_date_range",
+    "queries": [{
+      "name": "ds_orders_date",
+      "query": {
+        "datasetName": "orders",
+        "fields": [{"name": "order_date", "expression": "`order_date`"}],
+        "disaggregated": false
+      }
+    }],
+    "spec": {
+      "version": 2,
+      "widgetType": "filter-date-range-picker",
+      "encodings": {
+        "fields": [{
+          "fieldName": "order_date",
+          "displayName": "Order Date",
+          "queryName": "ds_orders_date"
+        }]
+      },
+      "frame": {"showTitle": true, "title": "Date Range"}
+    }
+  },
+  "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+}
+```
+
+At runtime, selecting "2025-01-01 to 2025-03-01" automatically applies `WHERE order_date BETWEEN '2025-01-01' AND '2025-03-01'` to all bound datasets.
+
+---
+
+## Multi-Dataset Filters
+
+When a filter should affect multiple datasets (e.g., "Region" filter for both sales and customers data), add multiple queries - one per dataset:
+
+```json
+{
+  "widget": {
+    "name": "filter_region",
+    "queries": [
+      {
+        "name": "sales_region",
+        "query": {
+          "datasetName": "sales",
+          "fields": [{"name": "region", "expression": "`region`"}],
+          "disaggregated": false
+        }
+      },
+      {
+        "name": "customers_region",
+        "query": {
+          "datasetName": "customers",
+          "fields": [{"name": "region", "expression": "`region`"}],
+          "disaggregated": false
+        }
+      }
+    ],
+    "spec": {
+      "version": 2,
+      "widgetType": "filter-multi-select",
+      "encodings": {
+        "fields": [
+          {"fieldName": "region", "displayName": "Region (Sales)", "queryName": "sales_region"},
+          {"fieldName": "region", "displayName": "Region (Customers)", "queryName": "customers_region"}
+        ]
+      },
+      "frame": {"showTitle": true, "title": "Region"}
+    }
+  },
+  "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+}
+```
+
+Each `queryName` in `encodings.fields` binds the filter to that specific dataset. Datasets not bound will not be filtered.
 
 ---
 
