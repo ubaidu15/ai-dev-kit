@@ -97,7 +97,7 @@ def get_cluster_status(cluster_id: str) -> Dict[str, Any]:
     return _get_cluster_status(cluster_id)
 
 
-@mcp.tool(timeout=300)
+@mcp.tool(timeout=120)
 def execute_databricks_command(
     code: str,
     cluster_id: str = None,
