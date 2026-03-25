@@ -259,11 +259,45 @@ def unpublish_dashboard(dashboard_id: str) -> Dict[str, str]:
     }
 
 
+def _inject_genie_space(
+    dashboard_content: Union[str, dict],
+    genie_space_id: Optional[str],
+) -> str:
+    """Inject Genie space configuration into dashboard JSON.
+
+    Args:
+        dashboard_content: Dashboard JSON content as string or dict
+        genie_space_id: Optional Genie space ID to link
+
+    Returns:
+        Dashboard JSON string with Genie space configuration
+    """
+    if isinstance(dashboard_content, str):
+        dashboard_dict = json.loads(dashboard_content)
+    else:
+        dashboard_dict = dashboard_content
+
+    if genie_space_id:
+        # Ensure uiSettings exists
+        if "uiSettings" not in dashboard_dict:
+            dashboard_dict["uiSettings"] = {}
+
+        # Add Genie space configuration
+        dashboard_dict["uiSettings"]["genieSpace"] = {
+            "isEnabled": True,
+            "overrideId": genie_space_id,
+            "enablementMode": "ENABLED",
+        }
+
+    return json.dumps(dashboard_dict)
+
+
 def deploy_dashboard(
     dashboard_content: Union[str, dict],
     install_path: str,
     dashboard_name: str,
     warehouse_id: str,
+    genie_space_id: Optional[str] = None,
 ) -> DashboardDeploymentResult:
     """Deploy a dashboard to Databricks workspace.
 
@@ -277,15 +311,15 @@ def deploy_dashboard(
         install_path: Workspace folder path (e.g., /Workspace/Users/me/dashboards)
         dashboard_name: Display name for the dashboard
         warehouse_id: SQL warehouse ID
+        genie_space_id: Optional Genie space ID to link to dashboard
 
     Returns:
         DashboardDeploymentResult with deployment status and details
     """
     from databricks.sdk.errors.platform import ResourceDoesNotExist
 
-    # Ensure dashboard_content is a JSON string — MCP may deserialize it to a dict
-    if isinstance(dashboard_content, dict):
-        dashboard_content = json.dumps(dashboard_content)
+    # Inject Genie space if provided, and ensure content is JSON string
+    dashboard_content = _inject_genie_space(dashboard_content, genie_space_id)
 
     w = get_workspace_client()
     dashboard_path = f"{install_path}/{dashboard_name}.lvdash.json"
@@ -366,6 +400,7 @@ def create_or_update_dashboard(
     serialized_dashboard: Union[str, dict],
     warehouse_id: str,
     publish: bool = True,
+    genie_space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create or update a dashboard.
 
@@ -380,6 +415,8 @@ def create_or_update_dashboard(
         serialized_dashboard: Dashboard JSON content
         warehouse_id: SQL warehouse ID
         publish: Whether to publish after create/update (default: True)
+        genie_space_id: Optional Genie space ID to link to dashboard.
+            When provided, enables the "Ask Genie" button on the dashboard.
 
     Returns:
         Dictionary with:
@@ -394,6 +431,7 @@ def create_or_update_dashboard(
         install_path=parent_path,
         dashboard_name=display_name,
         warehouse_id=warehouse_id,
+        genie_space_id=genie_space_id,
     )
 
     return {

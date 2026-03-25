@@ -45,6 +45,7 @@ def create_or_update_dashboard(
     serialized_dashboard: Union[str, dict],
     warehouse_id: str,
     publish: bool = True,
+    genie_space_id: str = None,
 ) -> Dict[str, Any]:
     """Create or update an AI/BI dashboard from JSON content.
 
@@ -166,6 +167,9 @@ def create_or_update_dashboard(
         serialized_dashboard: Dashboard JSON content as string (MUST be tested first!)
         warehouse_id: SQL warehouse ID for query execution
         publish: Whether to publish after creation (default: True)
+        genie_space_id: Optional Genie space ID to link to the dashboard.
+            When provided, enables the "Ask Genie" button on the dashboard,
+            allowing users to ask natural language questions about the data.
 
     Returns:
         Dictionary with success, status, dashboard_id, path, url, published, error.
@@ -180,6 +184,7 @@ def create_or_update_dashboard(
         serialized_dashboard=serialized_dashboard,
         warehouse_id=warehouse_id,
         publish=publish,
+        genie_space_id=genie_space_id,
     )
 
     # Track resource on successful create/update
