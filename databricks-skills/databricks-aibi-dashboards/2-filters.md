@@ -158,19 +158,42 @@ Place directly on a canvas page (affects only that page):
 
 ---
 
-## Date Range Picker Example
+## Date Range Filtering (IMPORTANT)
 
-For time-based filtering across the dashboard:
+> **Best Practice**: Most dashboards should include a date range filter on datasets with time-based data.
+> This allows users to focus on relevant time periods. However, be thoughtful about which datasets
+> should be filtered - metrics like "All-Time Total" or "MRR" should NOT be date-filtered.
 
+There are **two approaches** to date range filtering:
+
+### Approach 1: Field-Based Filtering (Automatic)
+
+When your dataset has a date column, the filter automatically applies `IN_RANGE()` to that field.
+This is the simplest approach when the date field is directly in the SELECT.
+
+**Dataset** (date field in output):
+```json
+{
+  "name": "weekly_trend",
+  "displayName": "Weekly Trend",
+  "queryLines": [
+    "SELECT week_start, revenue_usd, returns_usd ",
+    "FROM catalog.schema.weekly_summary ",
+    "ORDER BY week_start"
+  ]
+}
+```
+
+**Filter widget** (binds to field):
 ```json
 {
   "widget": {
-    "name": "filter_date_range",
+    "name": "date_range_filter",
     "queries": [{
-      "name": "ds_orders_date",
+      "name": "ds_weekly_trend_date",
       "query": {
-        "datasetName": "orders",
-        "fields": [{"name": "order_date", "expression": "`order_date`"}],
+        "datasetName": "weekly_trend",
+        "fields": [{"name": "week_start", "expression": "`week_start`"}],
         "disaggregated": false
       }
     }],
@@ -179,9 +202,8 @@ For time-based filtering across the dashboard:
       "widgetType": "filter-date-range-picker",
       "encodings": {
         "fields": [{
-          "fieldName": "order_date",
-          "displayName": "Order Date",
-          "queryName": "ds_orders_date"
+          "fieldName": "week_start",
+          "queryName": "ds_weekly_trend_date"
         }]
       },
       "frame": {"showTitle": true, "title": "Date Range"}
@@ -191,7 +213,120 @@ For time-based filtering across the dashboard:
 }
 ```
 
-At runtime, selecting "2025-01-01 to 2025-03-01" automatically applies `WHERE order_date BETWEEN '2025-01-01' AND '2025-03-01'` to all bound datasets.
+### Approach 2: Parameter-Based Filtering (Explicit Control)
+
+When you need the date range in a WHERE clause (e.g., filtering before aggregation),
+use SQL parameters with `:param_name.min` and `:param_name.max` syntax.
+
+**Dataset** (with parameter in WHERE clause):
+```json
+{
+  "name": "revenue_by_category",
+  "displayName": "Revenue by Category",
+  "queryLines": [
+    "SELECT category, SUM(revenue_usd) as revenue ",
+    "FROM catalog.schema.daily_orders ",
+    "WHERE order_date BETWEEN :date_range.min AND :date_range.max ",
+    "GROUP BY category ORDER BY revenue DESC"
+  ],
+  "parameters": [{
+    "displayName": "date_range",
+    "keyword": "date_range",
+    "dataType": "DATE",
+    "complexType": "RANGE",
+    "defaultSelection": {
+      "range": {
+        "dataType": "DATE",
+        "min": {"value": "now-12M/M"},
+        "max": {"value": "now/M"}
+      }
+    }
+  }]
+}
+```
+
+**Filter widget** (binds to parameter):
+```json
+{
+  "widget": {
+    "name": "date_range_filter",
+    "queries": [{
+      "name": "ds_revenue_date_param",
+      "query": {
+        "datasetName": "revenue_by_category",
+        "parameters": [{"name": "date_range", "keyword": "date_range"}],
+        "disaggregated": false
+      }
+    }],
+    "spec": {
+      "version": 2,
+      "widgetType": "filter-date-range-picker",
+      "encodings": {
+        "fields": [{
+          "parameterName": "date_range",
+          "queryName": "ds_revenue_date_param"
+        }]
+      },
+      "frame": {"showTitle": true, "title": "Date Range"}
+    }
+  },
+  "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+}
+```
+
+### Combining Both Approaches
+
+A single date range filter can bind to multiple datasets using different approaches:
+
+```json
+{
+  "widget": {
+    "name": "date_range_filter",
+    "queries": [
+      {
+        "name": "ds_trend_field",
+        "query": {
+          "datasetName": "weekly_trend",
+          "fields": [{"name": "week_start", "expression": "`week_start`"}],
+          "disaggregated": false
+        }
+      },
+      {
+        "name": "ds_category_param",
+        "query": {
+          "datasetName": "revenue_by_category",
+          "parameters": [{"name": "date_range", "keyword": "date_range"}],
+          "disaggregated": false
+        }
+      }
+    ],
+    "spec": {
+      "version": 2,
+      "widgetType": "filter-date-range-picker",
+      "encodings": {
+        "fields": [
+          {"fieldName": "week_start", "queryName": "ds_trend_field"},
+          {"parameterName": "date_range", "queryName": "ds_category_param"}
+        ]
+      },
+      "frame": {"showTitle": true, "title": "Date Range"}
+    }
+  },
+  "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+}
+```
+
+### When NOT to Apply Date Filtering
+
+Some metrics should NOT be filtered by date:
+- **MRR/ARR**: Monthly/Annual recurring revenue is a point-in-time metric
+- **All-Time Totals**: Cumulative metrics since inception
+- **YTD Comparisons**: When comparing year-to-date against prior year
+- **Fixed Snapshots**: "As of" metrics for a specific date
+
+For these, either:
+1. Don't bind them to the date filter (omit from filter queries)
+2. Use a separate dataset not connected to the date range filter
 
 ---
 

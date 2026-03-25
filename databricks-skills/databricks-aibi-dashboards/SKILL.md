@@ -37,7 +37,7 @@ Create Databricks AI/BI dashboards (formerly Lakeview dashboards). **Follow thes
 | `get_table_details` | **STEP 1**: Get table schemas for designing queries |
 | `execute_sql` | **STEP 3**: Test SQL queries - MANDATORY before deployment! |
 | `get_best_warehouse` | Get available warehouse ID |
-| `create_or_update_dashboard` | **STEP 5**: Deploy dashboard JSON (only after validation!) |
+| `create_or_update_dashboard` | **STEP 5**: Deploy dashboard JSON. Optional params: `genie_space_id` (link Genie), `catalog`/`schema` (defaults for unqualified table names) |
 | `get_dashboard` | Get dashboard details by ID, or list all dashboards (omit dashboard_id) |
 | `delete_dashboard` | Move dashboard to trash |
 | `publish_dashboard` | Publish (`publish=True`) or unpublish (`publish=False`) a dashboard |
