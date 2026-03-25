@@ -8,14 +8,34 @@ description: "Creates, configures, and updates Databricks Lakeflow Spark Declara
 ---
 
 ## Critical Rules (always follow)
-- **MUST** know the language (Python or SQL). Ask the user if you don't know, stick with that language unless told otherwise. If you're unsure, SQL is the preference.
+
+### Syntax: CREATE OR REFRESH (not CREATE OR REPLACE)
+- **MUST** use `CREATE OR REFRESH` for SDP objects:
+  - `CREATE OR REFRESH STREAMING TABLE` - for streaming tables
+  - `CREATE OR REFRESH MATERIALIZED VIEW` - for materialized views
+- **NEVER** use `CREATE OR REPLACE` - that is standard SQL syntax, not SDP syntax
+
+### Simplicity First
+- **MUST** create the minimal number of tables to solve the task
+- When asked to "create a silver table" or "create a gold table", create **ONE table** - not a multi-layer pipeline
+- Don't add intermediate tables, staging tables, or helper views unless explicitly requested
+- A silver transformation = 1 streaming table reading from bronze
+- A gold aggregation = 1 materialized view reading from silver
+- Only create bronze→silver→gold chains when the user asks for a "pipeline" or "medallion architecture"
+
+### Language Selection
+- **MUST** know the language (Python or SQL). For simple task / pipeline / table creation, pick SQL. For complex pipeline with parametrized information, or if the user mentions python-related items pick python. If you have a doubt, ask the user. Stick with that language unless told otherwise.
+
 | User Says | Action |
 |-----------|--------|
-| "Python pipeline", "Python SDP", "use Python" | **User wants Python** |
+| "Python pipeline", "Python SDP", "use Python", "udf", "pandas", "ml inference", "pyspark" | **User wants Python** |
 | "SQL pipeline", "SQL files", "use SQL" | **User wants SQL** |
-| "Create a SDP and no other instruction" | **Ask the user clarification, SQL or python** |
+| "Create a simple pipeline", "create a table", "an aggregation" | **Pick SQL as it's simple** |
+
+### Other Rules
 - **MUST** create serverless pipelines by default. Only use classic clusters if user explicitly requires R language, Spark RDD APIs, or JAR libraries.
 - **MUST** choose the right workflow based on context (see below).
+- When the user provides table schema and asks for code, respond directly with the code. Don't ask clarifying questions if the request is clear.
 
 ## Choose Your Workflow
 
@@ -81,6 +101,7 @@ Before writing pipeline code, make sure you have:
 | Concept | Details |
 |---------|---------|
 | **Names** | SDP = Spark Declarative Pipelines = LDP = Lakeflow Declarative Pipelines (all interchangeable) |
+| **SQL Syntax** | `CREATE OR REFRESH STREAMING TABLE`, `CREATE OR REFRESH MATERIALIZED VIEW` |
 | **Python Import** | `from pyspark import pipelines as dp` |
 | **Primary Decorators** | `@dp.table()`, `@dp.materialized_view()`, `@dp.temporary_view()` |
 | **Replaces** | Delta Live Tables (DLT) with `import dlt` |
@@ -137,11 +158,12 @@ After choosing your workflow (see [Choose Your Workflow](#choose-your-workflow))
   - Minimal transformations (append-only, add metadata like `_ingested_at`, `_source_file`)                                                                                                                                          
   - Single source of truth preserving data lineage                                                                                                                                                                                   
                                                                                                                                                                                                                                      
-  **Silver Layer (Validated)**                                                                                                                                                                                                       
+  **Silver Layer (Validated)**
   - Cleaned and validated data.
-  - Might deduplicate here with auto_cdc, but often wait until the final step for auto_cdc if possible.                                                                                                                                                                                        
-  - Business logic applied (type casting, quality checks, filtering invalid records)                                                                                                                                                 
-  - Enterprise view of key business entities                                                                                                                                                                                         
+  - Might deduplicate here with auto_cdc, but often wait until the final step for auto_cdc if possible.
+  - Business logic applied (type casting, quality checks, filtering invalid records)
+  - **Standardize data types**: Use `DECIMAL(precision, scale)` for monetary/financial values (not DOUBLE/FLOAT which have precision issues), or store as INTEGER cents. Example: `CAST(amount AS DECIMAL(10,2))`
+  - Enterprise view of key business entities
   - Enables self-service analytics and ML                                                                                                                                                                                            
                                                                                                                                                                                                                                      
   **Gold Layer (Business-Ready)**                                                                                                                                                                                                    

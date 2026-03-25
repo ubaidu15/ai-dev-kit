@@ -2,63 +2,80 @@
 # MAGIC %md
 # MAGIC # Data Exploration Notebook
 # MAGIC
-# MAGIC This notebook is for ad-hoc exploration and data discovery.
-# MAGIC Place exploration notebooks in the `explorations/` folder.
+# MAGIC Explore raw data in Volumes before building pipeline transformations.
 # MAGIC
 # MAGIC **Note:** Pipeline transformations should use raw `.sql` or `.py` files, NOT notebooks.
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Preview Bronze Data
-
-# COMMAND ----------
-
-# Preview the raw bronze table
-df = spark.read.table("bronze_orders")
-display(df.limit(100))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Data Quality Check
-
-# COMMAND ----------
-
-# Check for nulls and data distribution
-from pyspark.sql import functions as F
-
-df.select(
-    F.count("*").alias("total_rows"),
-    F.count("order_id").alias("non_null_order_id"),
-    F.countDistinct("customer_id").alias("unique_customers"),
-    F.min("order_date").alias("min_date"),
-    F.max("order_date").alias("max_date")
-).display()
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Sample SQL Query
+# MAGIC ## 1. Explore Raw Files in Volume
+# MAGIC
+# MAGIC Query raw parquet/json files directly to understand the data structure.
 
 # COMMAND ----------
 
 # MAGIC %sql
+# MAGIC -- Preview raw orders data
+# MAGIC SELECT * FROM parquet.`/Volumes/my_catalog/my_schema/raw/orders/` LIMIT 100
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Check schema and sample values
+# MAGIC DESCRIBE SELECT * FROM parquet.`/Volumes/my_catalog/my_schema/raw/orders/`
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Data quality: nulls, distinct values, date range
 # MAGIC SELECT
-# MAGIC   order_date,
-# MAGIC   COUNT(*) as order_count,
-# MAGIC   SUM(amount) as total_amount
-# MAGIC FROM bronze_orders
-# MAGIC GROUP BY order_date
-# MAGIC ORDER BY order_date DESC
-# MAGIC LIMIT 10
+# MAGIC   COUNT(*) AS total_rows,
+# MAGIC   COUNT(order_id) AS non_null_order_id,
+# MAGIC   COUNT(DISTINCT customer_id) AS unique_customers,
+# MAGIC   MIN(order_date) AS min_date,
+# MAGIC   MAX(order_date) AS max_date
+# MAGIC FROM parquet.`/Volumes/my_catalog/my_schema/raw/orders/`
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Profile Data
+# MAGIC ## 2. Explore Another Raw Source
 
 # COMMAND ----------
 
-# Use dbutils to get summary statistics
-dbutils.data.summarize(df)
+# MAGIC %sql
+# MAGIC -- Preview raw customers data
+# MAGIC SELECT * FROM parquet.`/Volumes/my_catalog/my_schema/raw/customers/` LIMIT 100
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 3. Join Raw Data for Exploration
+# MAGIC
+# MAGIC Test joins before building the pipeline.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Join orders with customers to validate keys
+# MAGIC SELECT
+# MAGIC   o.order_id,
+# MAGIC   o.order_date,
+# MAGIC   o.amount,
+# MAGIC   c.customer_name,
+# MAGIC   c.email
+# MAGIC FROM parquet.`/Volumes/my_catalog/my_schema/raw/orders/` o
+# MAGIC LEFT JOIN parquet.`/Volumes/my_catalog/my_schema/raw/customers/` c
+# MAGIC   ON o.customer_id = c.customer_id
+# MAGIC LIMIT 100
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Check for orphan orders (no matching customer)
+# MAGIC SELECT COUNT(*) AS orphan_orders
+# MAGIC FROM parquet.`/Volumes/my_catalog/my_schema/raw/orders/` o
+# MAGIC LEFT JOIN parquet.`/Volumes/my_catalog/my_schema/raw/customers/` c
+# MAGIC   ON o.customer_id = c.customer_id
+# MAGIC WHERE c.customer_id IS NULL

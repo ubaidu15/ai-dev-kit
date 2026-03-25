@@ -389,7 +389,7 @@ def silver_orders():
     return (
         spark.readStream.table("bronze_orders")
         .filter(F.col("order_date") >= F.current_date() - 90)  # Filter early
-        .withColumn("amount", F.col("amount").cast("decimal(10,2)"))
+        .withColumn("amount", F.col("amount").cast("decimal(10,2)"))  # DECIMAL for monetary
         .select("order_id", "customer_id", "amount", "order_date")  # Select specific
     )
 

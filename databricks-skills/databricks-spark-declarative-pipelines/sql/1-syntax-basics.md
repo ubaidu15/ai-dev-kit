@@ -11,7 +11,7 @@ Core SQL syntax for Spark Declarative Pipelines (SDP).
 Processes data incrementally. Use for continuous ingestion and transformations.
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_events
+CREATE OR REFRESH STREAMING TABLE bronze_events
 COMMENT 'Raw event data'
 CLUSTER BY (event_type, event_date)
 TBLPROPERTIES (
@@ -21,7 +21,8 @@ TBLPROPERTIES (
 AS
 SELECT
   *,
-  current_timestamp() AS _ingested_at
+  current_timestamp() AS _ingested_at,
+  _metadata.file_path AS _source_file
 FROM STREAM read_files('/Volumes/my_catalog/my_schema/raw/events/', format => 'json');
 ```
 
@@ -35,7 +36,7 @@ FROM STREAM read_files('/Volumes/my_catalog/my_schema/raw/events/', format => 'j
 Batch table with automatic incremental refresh.
 
 ```sql
-CREATE OR REPLACE MATERIALIZED VIEW gold_daily_summary
+CREATE OR REFRESH MATERIALIZED VIEW gold_daily_summary
 COMMENT 'Daily aggregated metrics'
 CLUSTER BY (report_date)
 AS
@@ -110,7 +111,7 @@ WHERE quantity > 0;
 ### Constraint Syntax
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE silver_orders (
+CREATE OR REFRESH STREAMING TABLE silver_orders (
   CONSTRAINT valid_amount EXPECT (amount > 0) ON VIOLATION DROP ROW,
   CONSTRAINT valid_customer EXPECT (customer_id IS NOT NULL) ON VIOLATION DROP ROW,
   CONSTRAINT critical_field EXPECT (order_id IS NOT NULL) ON VIOLATION FAIL UPDATE
@@ -130,7 +131,7 @@ SELECT * FROM STREAM bronze_orders;
 For simple filtering without tracking:
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE silver_orders AS
+CREATE OR REFRESH STREAMING TABLE silver_orders AS
 SELECT * FROM STREAM bronze_orders
 WHERE amount > 0 AND customer_id IS NOT NULL;
 ```
@@ -142,7 +143,7 @@ WHERE amount > 0 AND customer_id IS NOT NULL;
 Use `CLUSTER BY` instead of legacy `PARTITION BY`. See **[5-performance.md](5-performance.md#liquid-clustering-recommended)** for detailed guidance on key selection by layer.
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_events
+CREATE OR REFRESH STREAMING TABLE bronze_events
 CLUSTER BY (event_type, event_date)
 AS SELECT ...;
 ```
@@ -152,7 +153,7 @@ AS SELECT ...;
 ## Table Properties
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_events
+CREATE OR REFRESH STREAMING TABLE bronze_events
 TBLPROPERTIES (
   'delta.autoOptimize.optimizeWrite' = 'true',    -- Optimize file sizes on write
   'delta.autoOptimize.autoCompact' = 'true',      -- Automatic compaction
@@ -169,12 +170,12 @@ AS SELECT ...;
 
 ```sql
 -- Near-real-time
-CREATE OR REPLACE MATERIALIZED VIEW gold_live_metrics
+CREATE OR REFRESH MATERIALIZED VIEW gold_live_metrics
 REFRESH EVERY 5 MINUTES
 AS SELECT ...;
 
 -- Daily
-CREATE OR REPLACE MATERIALIZED VIEW gold_daily_summary
+CREATE OR REFRESH MATERIALIZED VIEW gold_daily_summary
 REFRESH EVERY 1 DAY
 AS SELECT ...;
 ```
@@ -199,7 +200,7 @@ Reference configuration values in SQL:
 
 ```sql
 -- In SQL, use ${variable_name} syntax
-CREATE OR REPLACE STREAMING TABLE bronze_orders AS
+CREATE OR REFRESH STREAMING TABLE bronze_orders AS
 SELECT * FROM STREAM read_files(
   '${input_path}/orders/',
   format => 'json'
@@ -222,3 +223,4 @@ configuration:
 | Constraint syntax error | Use `CONSTRAINT name EXPECT (condition)` |
 | Cluster key not working | Verify column exists, limit to 4 keys |
 | Parameter not resolved | Check `${var}` syntax and pipeline configuration |
+| Using legacy `LIVE` keyword | Use `CREATE OR REFRESH STREAMING TABLE` \| `MATERIALIZED VIEW`, not `CREATE LIVE TABLE` \| `STREAMING LIVE TABLE` |

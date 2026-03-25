@@ -28,7 +28,13 @@ from pyspark.sql import functions as F
     path="/path/to/external/location"  # Optional external location
 )
 def bronze_events():
-    return spark.readStream.format("cloudFiles").load("/Volumes/...")
+    return (
+        spark.readStream.format("cloudFiles")
+        .option("cloudFiles.format", "json")
+        .load("/Volumes/catalog/schema/raw/events/")
+        .withColumn("_ingested_at", F.current_timestamp())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
+    )
 ```
 
 **Parameters:**
@@ -222,6 +228,8 @@ df = spark.readStream.format("cloudFiles") \
 **Do NOT use:**
 - `dp.read()` or `dp.read_stream()` - not part of modern API
 - `dlt.read()` or `dlt.read_stream()` - legacy API
+- `dlt.apply_changes()` - legacy API; use `dp.create_auto_cdc_flow()` instead
+- `import dlt` - legacy module; use `from pyspark import pipelines as dp`
 
 ---
 
@@ -288,3 +296,4 @@ Dataset functions should only contain code to define the transformation, not exe
 | Table not found | Check catalog/schema qualification or pipeline default settings |
 | Parameter not resolved | Use `spark.conf.get("param_name")` |
 | Actions in definition | Remove `collect()`, `count()`, `save()` from table functions |
+| Using legacy `dlt` API | Replace `import dlt` with `from pyspark import pipelines as dp` |

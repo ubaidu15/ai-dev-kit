@@ -15,7 +15,7 @@ Auto Loader incrementally processes new files. Use `STREAM read_files()` in stre
 ### Basic Pattern
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_orders AS
+CREATE OR REFRESH STREAMING TABLE bronze_orders AS
 SELECT
   *,
   current_timestamp() AS _ingested_at,
@@ -58,7 +58,7 @@ Handle malformed records:
 
 ```sql
 -- Flag records with parsing errors
-CREATE OR REPLACE STREAMING TABLE bronze_events AS
+CREATE OR REFRESH STREAMING TABLE bronze_events AS
 SELECT
   *,
   current_timestamp() AS _ingested_at,
@@ -66,11 +66,11 @@ SELECT
 FROM STREAM read_files('/Volumes/catalog/schema/raw/events/', format => 'json');
 
 -- Quarantine bad records
-CREATE OR REPLACE STREAMING TABLE bronze_quarantine AS
+CREATE OR REFRESH STREAMING TABLE bronze_quarantine AS
 SELECT * FROM STREAM bronze_events WHERE _rescued_data IS NOT NULL;
 
 -- Clean records for downstream
-CREATE OR REPLACE STREAMING TABLE silver_clean AS
+CREATE OR REFRESH STREAMING TABLE silver_clean AS
 SELECT * FROM STREAM bronze_events WHERE _rescued_data IS NULL;
 ```
 
@@ -81,7 +81,7 @@ SELECT * FROM STREAM bronze_events WHERE _rescued_data IS NULL;
 ### Kafka
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_kafka_events AS
+CREATE OR REFRESH STREAMING TABLE bronze_kafka_events AS
 SELECT
   CAST(key AS STRING) AS event_key,
   CAST(value AS STRING) AS event_value,
@@ -100,7 +100,7 @@ FROM read_kafka(
 ### Parse JSON from Kafka
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE silver_events AS
+CREATE OR REFRESH STREAMING TABLE silver_events AS
 SELECT
   from_json(event_value, 'event_id STRING, event_type STRING, timestamp TIMESTAMP') AS data,
   kafka_timestamp, _ingested_at

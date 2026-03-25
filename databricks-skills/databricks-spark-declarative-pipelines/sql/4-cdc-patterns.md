@@ -91,7 +91,7 @@ When `price` or `cost` changes, a new version is created. Other column changes u
 ### Step 1: Clean and Validate Source Data
 
 ```sql
-CREATE OR REPLACE STREAMING TABLE customers_cdc_clean AS
+CREATE OR REFRESH STREAMING TABLE customers_cdc_clean AS
 SELECT
   customer_id,
   customer_name,
@@ -132,7 +132,7 @@ SCD Type 2 tables include temporal columns:
 
 ```sql
 -- All current records
-CREATE OR REPLACE MATERIALIZED VIEW dim_customers_current AS
+CREATE OR REFRESH MATERIALIZED VIEW dim_customers_current AS
 SELECT
   customer_id, customer_name, email, phone, address,
   __START_AT AS valid_from
@@ -152,7 +152,7 @@ Get state as of a specific date:
 
 ```sql
 -- Products as of January 1, 2024
-CREATE OR REPLACE MATERIALIZED VIEW products_as_of_2024_01_01 AS
+CREATE OR REFRESH MATERIALIZED VIEW products_as_of_2024_01_01 AS
 SELECT
   product_id, product_name, price, category,
   __START_AT, __END_AT
@@ -204,7 +204,7 @@ ORDER BY __START_AT;
 
 ```sql
 -- Join sales with product prices at time of sale
-CREATE OR REPLACE MATERIALIZED VIEW sales_with_historical_prices AS
+CREATE OR REFRESH MATERIALIZED VIEW sales_with_historical_prices AS
 SELECT
   s.sale_id, s.product_id, s.sale_date, s.quantity,
   p.product_name, p.price AS unit_price_at_sale_time,
@@ -220,7 +220,7 @@ INNER JOIN products_history p
 ### With Current Dimension
 
 ```sql
-CREATE OR REPLACE MATERIALIZED VIEW sales_with_current_prices AS
+CREATE OR REFRESH MATERIALIZED VIEW sales_with_current_prices AS
 SELECT
   s.sale_id, s.product_id, s.sale_date, s.quantity,
   s.amount AS amount_at_sale,
@@ -240,16 +240,16 @@ INNER JOIN products_history p
 
 ```sql
 -- Current state view (most common pattern)
-CREATE OR REPLACE MATERIALIZED VIEW dim_products_current AS
+CREATE OR REFRESH MATERIALIZED VIEW dim_products_current AS
 SELECT * FROM products_history WHERE __END_AT IS NULL;
 
 -- Recent changes only
-CREATE OR REPLACE MATERIALIZED VIEW dim_recent_changes AS
+CREATE OR REFRESH MATERIALIZED VIEW dim_recent_changes AS
 SELECT * FROM products_history
 WHERE __START_AT >= CURRENT_DATE() - INTERVAL 90 DAYS;
 
 -- Change frequency stats
-CREATE OR REPLACE MATERIALIZED VIEW product_change_stats AS
+CREATE OR REFRESH MATERIALIZED VIEW product_change_stats AS
 SELECT
   product_id,
   COUNT(*) AS version_count,
@@ -286,7 +286,7 @@ Apply type casting, validation, and filtering first:
 
 ```sql
 -- Clean source
-CREATE OR REPLACE STREAMING TABLE users_clean AS
+CREATE OR REFRESH STREAMING TABLE users_clean AS
 SELECT
   user_id,
   TRIM(email) AS email,

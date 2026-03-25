@@ -224,7 +224,7 @@ def bronze_sales():
 
 **SDP SQL:**
 ```sql
-CREATE OR REPLACE STREAMING TABLE bronze_sales
+CREATE OR REFRESH STREAMING TABLE bronze_sales
 COMMENT 'Raw sales'
 AS
 SELECT *, current_timestamp() AS _ingested_at
@@ -249,7 +249,7 @@ def silver_sales():
 
 **SDP SQL:**
 ```sql
-CREATE OR REPLACE STREAMING TABLE silver_sales AS
+CREATE OR REFRESH STREAMING TABLE silver_sales AS
 SELECT
   sale_id, customer_id,
   CAST(amount AS DECIMAL(10,2)) AS amount,
@@ -303,7 +303,7 @@ def silver_sales_enriched():
 
 **SDP SQL:**
 ```sql
-CREATE OR REPLACE STREAMING TABLE silver_sales_enriched AS
+CREATE OR REFRESH STREAMING TABLE silver_sales_enriched AS
 SELECT s.*, p.product_name, p.category
 FROM STREAM silver_sales s
 LEFT JOIN dim_products p ON s.product_id = p.product_id;
@@ -325,17 +325,17 @@ WHERE amount > 0 AND id IS NOT NULL
 **SDP SQL - Quarantine Pattern** (for auditing dropped records):
 ```sql
 -- Flag invalid records
-CREATE OR REPLACE STREAMING TABLE bronze_data_flagged AS
+CREATE OR REFRESH STREAMING TABLE bronze_data_flagged AS
 SELECT *,
   CASE WHEN amount <= 0 OR id IS NULL THEN TRUE ELSE FALSE END AS is_invalid
 FROM STREAM bronze_data;
 
 -- Clean for downstream
-CREATE OR REPLACE STREAMING TABLE silver_data_clean AS
+CREATE OR REFRESH STREAMING TABLE silver_data_clean AS
 SELECT * FROM STREAM bronze_data_flagged WHERE NOT is_invalid;
 
 -- Quarantine for investigation
-CREATE OR REPLACE STREAMING TABLE silver_data_quarantine AS
+CREATE OR REFRESH STREAMING TABLE silver_data_quarantine AS
 SELECT * FROM STREAM bronze_data_flagged WHERE is_invalid;
 ```
 
@@ -358,7 +358,7 @@ def sales_categorized():
 
 **SDP SQL:**
 ```sql
-CREATE OR REPLACE MATERIALIZED VIEW sales_categorized AS
+CREATE OR REFRESH MATERIALIZED VIEW sales_categorized AS
 SELECT *,
   CASE
     WHEN amount > 1000 THEN 'High'
